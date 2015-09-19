@@ -4,77 +4,146 @@
 	$text = file_get_contents($filepath);
 	$group = explode("\n", $text);
 
-	$no_of_call = 0;
+	$filepath_analyze_log = './log/loganalyze.log';
 	$keyword = array(
 		'func' => 'api/users',
+		'cpm' => 'count_pending_messages',
+		'gm' => 'get_messages',
+		'gfp' => 'get_friends_progress',
+		'gfs' => 'get_friends_score',
 		'status' => 'status=',
 		'service' => 'service=',
 		'connect' => 'connect=',
 		'dyno' => 'dyno='
 		);
-	$mean = $median = $mode = $dyno = 0;	
-	$mode_array = $median_array = $dyno_array = array();
+	$no_of_call = $mean = $median = $mode = $dyno = array();	
+	$mean_array = $mode_array = $median_array = $dyno_array = array();
+	$endpoint = $log_analyze = '';
+	$endpoint_array = array(
+		'count_pending_messages',
+		'get_messages',
+		'get_friends_progress',
+		'get_friends_score',
+		'get',
+		'post'
+		);	
+// GET /api/users/{user_id}/count_pending_messages
+// GET /api/users/{user_id}/get_messages
+// GET /api/users/{user_id}/get_friends_progress
+// GET /api/users/{user_id}/get_friends_score
+// POST /api/users/{user_id}
+// GET /api/users/{user_id}
 
 	#Search keyword for analyze
 	foreach ($group as $gvalue) {
-		$pos = strpos($gvalue, $keyword['func']);
-		if($pos !== false) {
-			$status = strpos($gvalue, $keyword['status']);
-			$service = strpos($gvalue, $keyword['service']);
-			$start = $service+strlen($keyword['service']); //start position for substr
-			$service_time = substr($gvalue, $start,$status-($start+3)); // 3 for 'ms' and ' ' between service and status
+		$find_func = strpos($gvalue, $keyword['func']); //api/users
+		#Check each line have keyword
+		if($find_func !== false) {
+			$find_method = strpos($gvalue, 'GET');
 			
-			$connect = strpos($gvalue, $keyword['connect']);
-			$start = $connect+strlen($keyword['connect']); //start position for substr
-			$connect_time = substr($gvalue, $start,$service-($start+3)); // 3 for 'ms' and ' ' between connect and service
+			if($find_method !== false) { // Method = GET
+				$find_cpm = strpos($gvalue, $keyword['cpm']);
+				$find_gm = strpos($gvalue, $keyword['gm']);
+				$find_gfp = strpos($gvalue, $keyword['gfp']);
+				$find_gfs = strpos($gvalue, $keyword['gfs']);
+				if($find_cpm !== false) {
+					$endpoint = $keyword['cpm'];
+				} elseif ($find_gm !== false) {
+					$endpoint = $keyword['gm'];
+				} elseif ($find_gfp !== false) {
+					$endpoint = $keyword['gfp'];
+				} elseif ($find_gfs !== false) {
+					$endpoint = $keyword['gfs'];
+				} else {
+					$endpoint = 'get';
+				}
+			} else { // Method = POST
+				$endpoint = 'post';
+			} //End if
+
+			$find_status = strpos($gvalue, $keyword['status']);
+			$find_service = strpos($gvalue, $keyword['service']);
+			$start = $find_service+strlen($keyword['service']); //start position for substr
+			$service_time = substr($gvalue, $start,$find_status-($start+3)); // 3 for 'ms' and ' ' between service and status
+			
+			$find_connect = strpos($gvalue, $keyword['connect']);
+			$start = $find_connect+strlen($keyword['connect']); //start position for substr
+			$connect_time = substr($gvalue, $start,$find_service-($start+3)); // 3 for 'ms' and ' ' between connect and service
 			
 			#Summary of response time
 			$response_time = $connect_time + $service_time;
-			$mean += $response_time;
+			if(isset($mean[$endpoint])) {
+				$mean[$endpoint] += $response_time;
+			} else {
+				$mean[$endpoint] = $response_time;
+			}
+			
 
 			#Count dupplicate response time Ex. $mode_array[33] = 10 -> response time 33 sec 10 times
-			if(isset($mode_array[$response_time]))			
-				$mode_array[$response_time] += 1;
+			if(isset($mode_array[$endpoint][$response_time]))			
+				$mode_array[$endpoint][$response_time] += 1;
 			else
-				$mode_array[$response_time] = 1;
+				$mode_array[$endpoint][$response_time] = 1;
 
 			#Store response time for sort
-			$median_array[] = $response_time;
+			$median_array[$endpoint][] = $response_time;
 
-			$dyno = strpos($gvalue, $keyword['dyno']);
-			$start = $dyno+strlen($keyword['dyno']); //start position for substr
-			$dyno_name = substr($gvalue, $start,$connect-($start+1)); // +1 for ' ' between dyno and connect
+			$find_dyno = strpos($gvalue, $keyword['dyno']);
+			$start = $find_dyno+strlen($keyword['dyno']); //start position for substr
+			$dyno_name = substr($gvalue, $start,$find_connect-($start+1)); // +1 for ' ' between dyno and connect
 			
 			#Count dupplicate dyno Ex. $dyno_array[web.9] = 10 (times)
-			if(isset($dyno_array[$dyno_name]))			
-				$dyno_array[$dyno_name] += 1;
+			if(isset($dyno_array[$endpoint][$dyno_name]))			
+				$dyno_array[$endpoint][$dyno_name] += 1;
 			else
-				$dyno_array[$dyno_name] = 1;			
-
-			$no_of_call++;
+				$dyno_array[$endpoint][$dyno_name] = 1;			
+			
+			if(isset($no_of_call[$endpoint])) {
+				$no_of_call[$endpoint]++;
+			} else {
+				$no_of_call[$endpoint] = 1;
+			}
+			
 		} //End if
 	} //End foreach
 
-	$mean = $mean/$no_of_call;
-	sort($median_array); //Sort Lowest value -> highest value with new key
-	ksort($mode_array); //Sort Lowest key -> highest key
-	$mode = array_search(max($mode_array), $mode_array); //Search for too much of dupplicate value
-	$num_of_array = count($median_array); 
-	$odd_number = $num_of_array%2 == 0;
-	#find median follow odd or even of number of array
-	if($odd_number) {
-		$half_of_array = $num_of_array/2;
-		$median = $median_array[$half_of_array-1] + $median_array[$half_of_array]; 
-		$median = $median/2;
-	} else {
-		$half_of_array = ceil($num_of_array/2);
-		$median = $median_array[$half_of_array-1];
-	}
-	$dyno = array_search(max($dyno_array), $dyno_array); //Search for too much of dupplicate value
+	foreach ($endpoint_array as $evalue) {
+		$mean[$evalue] = $mean[$evalue]/$no_of_call[$evalue];
+		sort($median_array[$evalue]); //Sort Lowest value -> highest value with new key
+		ksort($mode_array[$evalue]); //Sort Lowest key -> highest key
+		$mode[$evalue] = array_search(max($mode_array[$evalue]), $mode_array[$evalue]); //Search for too much of dupplicate value
+		$num_of_array = count($median_array[$evalue]); 
+		$odd_number = $num_of_array%2 == 0;
 
-	echo 'The number of times the URL was called : '.$no_of_call.'<br>';
-	echo 'The median of the response time : '.$median.'<br>';
-	echo 'The mode of the response time : '.$mode.'<br>';
-	echo 'The mean of the response time : '.$mean.'<br>';
-	echo 'The "dyno" that responded the most : '.$dyno;
+		#find median follow odd or even of number of array
+		if($odd_number) {
+			$half_of_array = $num_of_array/2;
+			$median[$evalue] = $median_array[$evalue][$half_of_array-1] + $median_array[$evalue][$half_of_array]; 
+			$median[$evalue] = $median[$evalue]/2;
+		} else {
+			$half_of_array = ceil($num_of_array/2);
+			$median[$evalue] = $median_array[$evalue][$half_of_array-1];
+		}
+		$dyno[$evalue] = array_search(max($dyno_array[$evalue]), $dyno_array[$evalue]); //Search for too much of dupplicate value
+
+
+		echo 'Endpoint : '.$evalue.'<br>';
+		echo 'The number of times the URL was called : '.$no_of_call[$evalue].' times<br>';
+		echo 'The median of the response time : '.$median[$evalue].' ms<br>';
+		echo 'The mode of the response time : '.$mode[$evalue].' ms<br>';
+		echo 'The mean of the response time : '.$mean[$evalue].' ms<br>';
+		echo 'The "dyno" that responded the most : '.$dyno[$evalue].'<br>'.'<br>';
+
+		$log_analyze .= 'Endpoint : '.$evalue.PHP_EOL;
+		$log_analyze .= 'The number of times the URL was called : '.$no_of_call[$evalue].' times'.PHP_EOL;
+		$log_analyze .= 'The median of the response time : '.$median[$evalue].' ms'.PHP_EOL ;
+		$log_analyze .= 'The mode of the response time : '.$mode[$evalue].' ms'.PHP_EOL ;
+		$log_analyze .= 'The mean of the response time : '.$mean[$evalue].' ms'.PHP_EOL ;
+		$log_analyze .= 'The "dyno" that responded the most : '.$dyno[$evalue].PHP_EOL .PHP_EOL ;
+	}
+
+	$fp = fopen($filepath_analyze_log, 'w');
+	fwrite($fp, $log_analyze);
+	fclose($fp);	
+
 ?>
