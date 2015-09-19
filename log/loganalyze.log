@@ -1,0 +1,42 @@
+Endpoint : count_pending_messages
+The number of times the URL was called : 2430 times
+The median of the response time : 15 ms
+The mode of the response time : 11 ms
+The mean of the response time : 25.99670781893 ms
+The "dyno" that responded the most : web.2
+
+Endpoint : get_messages
+The number of times the URL was called : 652 times
+The median of the response time : 32 ms
+The mode of the response time : 23 ms
+The mean of the response time : 62.170245398773 ms
+The "dyno" that responded the most : web.11
+
+Endpoint : get_friends_progress
+The number of times the URL was called : 1117 times
+The median of the response time : 51 ms
+The mode of the response time : 35 ms
+The mean of the response time : 111.89704565801 ms
+The "dyno" that responded the most : web.5
+
+Endpoint : get_friends_score
+The number of times the URL was called : 1533 times
+The median of the response time : 143 ms
+The mode of the response time : 67 ms
+The mean of the response time : 228.76516634051 ms
+The "dyno" that responded the most : web.7
+
+Endpoint : get
+The number of times the URL was called : 561 times
+The median of the response time : 26 ms
+The mode of the response time : 26 ms
+The mean of the response time : 52.028520499109 ms
+The "dyno" that responded the most : web.10
+
+Endpoint : post
+The number of times the URL was called : 2036 times
+The median of the response time : 46 ms
+The mode of the response time : 23 ms
+The mean of the response time : 82.453831041257 ms
+The "dyno" that responded the most : web.11
+
