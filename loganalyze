@@ -21,6 +21,8 @@
 	$no_of_call = $mean = $median = $mode = $dyno = array();	
 	$mean_array = $mode_array = $median_array = $dyno_array = array();
 	$endpoint = $log_analyze = '';
+
+	#list of endpoint
 	$endpoint_array = array(
 		'count_pending_messages',
 		'get_messages',
@@ -28,13 +30,7 @@
 		'get_friends_score',
 		'get',
 		'post'
-		);	
-// GET /api/users/{user_id}/count_pending_messages
-// GET /api/users/{user_id}/get_messages
-// GET /api/users/{user_id}/get_friends_progress
-// GET /api/users/{user_id}/get_friends_score
-// POST /api/users/{user_id}
-// GET /api/users/{user_id}
+		);
 
 	#Search keyword for analyze
 	foreach ($group as $gvalue) {
@@ -48,13 +44,13 @@
 				$find_gm = strpos($gvalue, $keyword['gm']);
 				$find_gfp = strpos($gvalue, $keyword['gfp']);
 				$find_gfs = strpos($gvalue, $keyword['gfs']);
-				if($find_cpm !== false) {
+				if($find_cpm !== false) { //count_pending_messages
 					$endpoint = $keyword['cpm'];
-				} elseif ($find_gm !== false) {
+				} elseif ($find_gm !== false) { //get_messages
 					$endpoint = $keyword['gm'];
-				} elseif ($find_gfp !== false) {
+				} elseif ($find_gfp !== false) { //get_friends_progress
 					$endpoint = $keyword['gfp'];
-				} elseif ($find_gfs !== false) {
+				} elseif ($find_gfs !== false) { //get_friends_score
 					$endpoint = $keyword['gfs'];
 				} else {
 					$endpoint = 'get';
@@ -80,7 +76,6 @@
 				$mean[$endpoint] = $response_time;
 			}
 			
-
 			#Count dupplicate response time Ex. $mode_array[33] = 10 -> response time 33 sec 10 times
 			if(isset($mode_array[$endpoint][$response_time]))			
 				$mode_array[$endpoint][$response_time] += 1;
@@ -100,6 +95,7 @@
 			else
 				$dyno_array[$endpoint][$dyno_name] = 1;			
 			
+			#Count number of request
 			if(isset($no_of_call[$endpoint])) {
 				$no_of_call[$endpoint]++;
 			} else {
@@ -109,11 +105,18 @@
 		} //End if
 	} //End foreach
 
+	#Analyze by endpoint
 	foreach ($endpoint_array as $evalue) {
 		$mean[$evalue] = $mean[$evalue]/$no_of_call[$evalue];
-		sort($median_array[$evalue]); //Sort Lowest value -> highest value with new key
-		ksort($mode_array[$evalue]); //Sort Lowest key -> highest key
-		$mode[$evalue] = array_search(max($mode_array[$evalue]), $mode_array[$evalue]); //Search for too much of dupplicate value
+
+		#Sort Lowest value -> highest value with new key
+		sort($median_array[$evalue]);
+
+		#Sort Lowest key -> highest key
+		ksort($mode_array[$evalue]); 
+
+		#Search for too much of dupplicate value
+		$mode[$evalue] = array_search(max($mode_array[$evalue]), $mode_array[$evalue]); 
 		$num_of_array = count($median_array[$evalue]); 
 		$odd_number = $num_of_array%2 == 0;
 
@@ -126,8 +129,8 @@
 			$half_of_array = ceil($num_of_array/2);
 			$median[$evalue] = $median_array[$evalue][$half_of_array-1];
 		}
-		$dyno[$evalue] = array_search(max($dyno_array[$evalue]), $dyno_array[$evalue]); //Search for too much of dupplicate value
-
+		#Search for too much of dupplicate value
+		$dyno[$evalue] = array_search(max($dyno_array[$evalue]), $dyno_array[$evalue]); 
 
 		echo 'Endpoint : '.$evalue.'<br>';
 		echo 'The number of times the URL was called : '.$no_of_call[$evalue].' times<br>';
