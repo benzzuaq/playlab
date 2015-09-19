@@ -1,3 +1,80 @@
 <?php
-  echo 'abce';
+	#Read file content to array
+	$filepath = './log/sample.log';
+	$text = file_get_contents($filepath);
+	$group = explode("\n", $text);
+
+	$no_of_call = 0;
+	$keyword = array(
+		'func' => 'api/users',
+		'status' => 'status=',
+		'service' => 'service=',
+		'connect' => 'connect=',
+		'dyno' => 'dyno='
+		);
+	$mean = $median = $mode = $dyno = 0;	
+	$mode_array = $median_array = $dyno_array = array();
+
+	#Search keyword for analyze
+	foreach ($group as $gvalue) {
+		$pos = strpos($gvalue, $keyword['func']);
+		if($pos !== false) {
+			$status = strpos($gvalue, $keyword['status']);
+			$service = strpos($gvalue, $keyword['service']);
+			$start = $service+strlen($keyword['service']); //start position for substr
+			$service_time = substr($gvalue, $start,$status-($start+3)); // 3 for 'ms' and ' ' between service and status
+			
+			$connect = strpos($gvalue, $keyword['connect']);
+			$start = $connect+strlen($keyword['connect']); //start position for substr
+			$connect_time = substr($gvalue, $start,$service-($start+3)); // 3 for 'ms' and ' ' between connect and service
+			
+			#Summary of response time
+			$response_time = $connect_time + $service_time;
+			$mean += $response_time;
+
+			#Count dupplicate response time Ex. $mode_array[33] = 10 -> response time 33 sec 10 times
+			if(isset($mode_array[$response_time]))			
+				$mode_array[$response_time] += 1;
+			else
+				$mode_array[$response_time] = 1;
+
+			#Store response time for sort
+			$median_array[] = $response_time;
+
+			$dyno = strpos($gvalue, $keyword['dyno']);
+			$start = $dyno+strlen($keyword['dyno']); //start position for substr
+			$dyno_name = substr($gvalue, $start,$connect-($start+1)); // +1 for ' ' between dyno and connect
+			
+			#Count dupplicate dyno Ex. $dyno_array[web.9] = 10 (times)
+			if(isset($dyno_array[$dyno_name]))			
+				$dyno_array[$dyno_name] += 1;
+			else
+				$dyno_array[$dyno_name] = 1;			
+
+			$no_of_call++;
+		} //End if
+	} //End foreach
+
+	$mean = $mean/$no_of_call;
+	sort($median_array); //Sort Lowest value -> highest value with new key
+	ksort($mode_array); //Sort Lowest key -> highest key
+	$mode = array_search(max($mode_array), $mode_array); //Search for too much of dupplicate value
+	$num_of_array = count($median_array); 
+	$odd_number = $num_of_array%2 == 0;
+	#find median follow odd or even of number of array
+	if($odd_number) {
+		$half_of_array = $num_of_array/2;
+		$median = $median_array[$half_of_array-1] + $median_array[$half_of_array]; 
+		$median = $median/2;
+	} else {
+		$half_of_array = ceil($num_of_array/2);
+		$median = $median_array[$half_of_array-1];
+	}
+	$dyno = array_search(max($dyno_array), $dyno_array); //Search for too much of dupplicate value
+
+	echo 'The number of times the URL was called : '.$no_of_call.'<br>';
+	echo 'The median of the response time : '.$median.'<br>';
+	echo 'The mode of the response time : '.$mode.'<br>';
+	echo 'The mean of the response time : '.$mean.'<br>';
+	echo 'The "dyno" that responded the most : '.$dyno;
 ?>
