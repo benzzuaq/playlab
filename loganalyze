@@ -1,10 +1,12 @@
 <?php
 	#Read file content to array
-	$filepath = './log/sample.log';
+	// $filepath = './log/sample.log';
+	$filepath = 'c://xampp/htdocs/playlab/log/sample.log';
 	$text = file_get_contents($filepath);
 	$group = explode("\n", $text);
 
-	$filepath_analyze_log = './log/loganalyze.log';
+	$filepath_analyze_log = 'c://xampp/htdocs/playlab/log/loganalyze.log';
+	// $filepath_analyze_log = './log/loganalyze.log';
 	$keyword = array(
 		'func' => 'api/users',
 		'cpm' => 'count_pending_messages',
